@@ -123,7 +123,7 @@ RCT_EXPORT_METHOD(initializeWithToken:(NSString *)token secret:(NSString *)secre
 }
 
     
-RCT_EXPORT_METHOD(setActiveStation:(NSString *)id)
+RCT_EXPORT_METHOD(setActiveStation:(NSString *)id withCrossfade:(BOOL)withCrossfade)
 {
     NSUInteger index = [_player.stationList indexOfObjectPassingTest:^BOOL(FMStation *station, NSUInteger idx, BOOL * _Nonnull stop) {
         return [station.identifier isEqualToString:id];
@@ -134,7 +134,7 @@ RCT_EXPORT_METHOD(setActiveStation:(NSString *)id)
         return;
     }
     
-    _player.activeStation = _player.stationList[index];
+    [_player setActiveStation:_player.stationList[index] withCrossfade:withCrossfade];
 }
 
 RCT_EXPORT_METHOD(enableAudioSession: (BOOL) enable) {
@@ -162,14 +162,9 @@ RCT_EXPORT_METHOD(skip)
     [player skip];
 }
 
-RCT_EXPORT_METHOD(secondsOfCrossfade: (NSinteger) seconds) {
+RCT_EXPORT_METHOD(secondsOfCrossfade:(float) seconds) {
     FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
     player.secondsOfCrossfade = seconds;
-}
-
-RCT_EXPORT_METHOD(crossfadeInEnabled: (BOOL) enable) {
-    FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
-    player.crossfadeInEnabled = enable;
 }
 
 RCT_REMAP_METHOD(canLike, canLikeResolver: (RCTPromiseResolveBlock)resolve
