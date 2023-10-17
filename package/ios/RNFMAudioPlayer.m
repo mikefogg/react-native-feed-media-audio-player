@@ -162,6 +162,16 @@ RCT_EXPORT_METHOD(skip)
     [player skip];
 }
 
+RCT_EXPORT_METHOD(secondsOfCrossfade: (NSinteger) seconds) {
+    FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
+    player.secondsOfCrossfade = seconds;
+}
+
+RCT_EXPORT_METHOD(crossfadeInEnabled: (BOOL) enable) {
+    FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
+    player.crossfadeInEnabled = enable;
+}
+
 RCT_REMAP_METHOD(canLike, canLikeResolver: (RCTPromiseResolveBlock)resolve
      rejecter:(RCTPromiseRejectBlock)reject)
 {
