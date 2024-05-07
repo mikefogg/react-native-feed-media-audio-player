@@ -63,7 +63,7 @@ RCT_EXPORT_MODULE()
 
 - (NSArray<NSDictionary *> *) mapStationListToDictionary: (FMStationArray *) inStations {
     NSMutableArray<NSDictionary *> *outStations = [[NSMutableArray alloc] init];
-    
+
     for (FMStation *station in inStations) {
         [outStations addObject:@{
                  @"id": station.identifier,
@@ -72,7 +72,7 @@ RCT_EXPORT_MODULE()
                  @"options": station.options
              }];
     }
-    
+
     return outStations;
 }
 
@@ -84,7 +84,7 @@ RCT_EXPORT_METHOD(initializeWithToken:(NSString *)token secret:(NSString *)secre
     if (!enableBackgroundMusic) {
         _player.disableAVAudioSession = YES;
     }
-    
+
     [FMAudioPlayer setClientToken:token secret:secret];
 
     FMAudioPlayer.autoNetworkRetryEnabled = false;
@@ -93,7 +93,7 @@ RCT_EXPORT_METHOD(initializeWithToken:(NSString *)token secret:(NSString *)secre
     [FMAudioPlayer.sharedPlayer whenAvailable:^{
         // the active station is not set at this time, so assume it is the first station
         FMStation *station = [self->_player.stationList firstObject];
-        
+
         [self sendEventWithName:@"availability" body:@{
                                            @"available": @YES,
                                            @"stations": [self mapStationListToDictionary:self->_player.stationList],
@@ -122,19 +122,18 @@ RCT_EXPORT_METHOD(initializeWithToken:(NSString *)token secret:(NSString *)secre
                                                 object:_player];
 }
 
-    
-RCT_EXPORT_METHOD(setActiveStation:(NSString *)id)
+RCT_EXPORT_METHOD(setActiveStation:(NSString *)id withCrossfade:(BOOL)withCrossfade)
 {
     NSUInteger index = [_player.stationList indexOfObjectPassingTest:^BOOL(FMStation *station, NSUInteger idx, BOOL * _Nonnull stop) {
         return [station.identifier isEqualToString:id];
     }];
-    
+
     if (index == NSNotFound) {
         RCTLogInfo(@"Cannot set active station to %@ because no station found with that id", id);
         return;
     }
-    
-    _player.activeStation = _player.stationList[index];
+
+    [_player setActiveStation:_player.stationList[index] withCrossfade:withCrossfade];
 }
 
 RCT_EXPORT_METHOD(enableAudioSession: (BOOL) enable) {
@@ -162,6 +161,11 @@ RCT_EXPORT_METHOD(skip)
     [player skip];
 }
 
+RCT_EXPORT_METHOD(secondsOfCrossfade: (float) seconds) {
+    FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
+    player.secondsOfCrossfade = seconds;
+}
+
 RCT_REMAP_METHOD(canLike, canLikeResolver: (RCTPromiseResolveBlock)resolve
      rejecter:(RCTPromiseRejectBlock)reject)
 {
@@ -173,7 +177,7 @@ RCT_REMAP_METHOD(canSkip, canSkipResolver: (RCTPromiseResolveBlock)resolve
      rejecter:(RCTPromiseRejectBlock)reject)
 {
     FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
-    
+
     resolve([NSNumber numberWithBool:[player canSkip]]);
 }
 RCT_EXPORT_METHOD(stop)
@@ -202,10 +206,10 @@ RCT_EXPORT_METHOD(seekCurrentStationBy: (float) seconds)
 RCT_EXPORT_METHOD(setClientID: (NSString*)cid )
 {
     FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
-    
+
     [player stop];
     [player setClientId:cid];
-    
+
     [self.player updateSession:^{
         FMStation *station = [self->_player.stationList firstObject];
 
@@ -221,7 +225,7 @@ RCT_EXPORT_METHOD(setClientID: (NSString*)cid )
 RCT_EXPORT_METHOD(updateSession)
 {
     FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
-    
+
     [player stop];
     [self.player updateSession:^{
         FMStation *station = [self->_player.stationList firstObject];
@@ -238,7 +242,7 @@ RCT_EXPORT_METHOD(updateSession)
 RCT_EXPORT_METHOD(createNewClientID)
 {
     FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
-    
+
     [player stop];
     [player createNewClientId];
 }
@@ -246,20 +250,20 @@ RCT_EXPORT_METHOD(createNewClientID)
 RCT_EXPORT_METHOD(logEvent: (NSString*) event withParams:(NSDictionary*) params)
 {
     FMAudioPlayer *player = [FMAudioPlayer sharedPlayer];
-    
+
     [player logEvent:event withParameters:params];
 }
-     
+
 -(void) onMusicQueued: (NSNotification *)notification  {
-    
+
     [self sendEventWithName:@"musicQueued" body:@{}];
-    
+
 }
 
 - (void)stopObserving {
     // make sure to unsubscribe, or we might get 'Bridge is not set!' crashes
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    
+
     // kill music, since nobody is observing it any more
     [_player stop];
 }
@@ -299,13 +303,13 @@ RCT_EXPORT_METHOD(logEvent: (NSString*) event withParams:(NSDictionary*) params)
 
 - (void) onPlaybackStateDidChangeNotification: (NSNotification *)notification {
     FMAudioPlayerPlaybackState state =_player.playbackState;
-    
+
     // this might cause a notice when the state doesn't actually change, but I think
     // it's worth it to weed this state out
     if (state == FMAudioPlayerPlaybackStateComplete) {
         state = FMAudioPlayerPlaybackStateReadyToPlay;
     }
-    
+
     [self sendEventWithName:@"state-change" body:@{
                                        @"state": @(state) }];
 }
@@ -331,4 +335,4 @@ RCT_EXPORT_METHOD(logEvent: (NSString*) event withParams:(NSDictionary*) params)
 
 
 @end
-  
+

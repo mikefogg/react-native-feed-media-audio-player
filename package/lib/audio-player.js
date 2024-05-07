@@ -3,7 +3,7 @@ import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import NanoEvents from 'nanoevents';
 const { RNFMAudioPlayer } = NativeModules;
 
-/* 
+/*
  * AudioPlayer is the bridge to a native FMAudioPlayer instance. This class tries
  * to keep track of the state of the native player and forward on events to javascript
  * listeners.
@@ -145,6 +145,18 @@ class AudioPlayer {
   }
 
   /**
+   * Set the number of seconds of crossfade for iOS only
+   */
+
+  secondsOfCrossfade(seconds) {
+    this.log('client called secondsOfCrossfade =' + seconds);
+
+    if (Platform.OS === 'ios') {
+      RNFMAudioPlayer.secondsOfCrossfade(seconds);
+    }
+  }
+
+  /**
    * Enable/disable AVAudiosession for iOS only
    */
 
@@ -201,7 +213,7 @@ class AudioPlayer {
 
 
   /**
-   * Return promise with int with 0 or 1 on whether skipping is allowed in current station at this time. 
+   * Return promise with int with 0 or 1 on whether skipping is allowed in current station at this time.
    */
 
   get canSkip() {
@@ -264,6 +276,14 @@ class AudioPlayer {
   }
 
   /**
+   * Update the active station and enable fading
+   */
+  setActiveStation(station, fade = false) {
+    this.log('client setting active station to', station);
+    RNFMAudioPlayer.setActiveStation(station.id, fade);
+  }
+
+  /**
    * Update the player to pull music from the given station (which must have
    * come from the `stations` property)
    */
@@ -298,13 +318,13 @@ class AudioPlayer {
 
     /**
    * This will trigger a re-request of the available stations.
-   * The player will emit a 'session-updated' event after fetching a new station and 
+   * The player will emit a 'session-updated' event after fetching a new station and
    * retrieving the list of stations. The `onSessionUpdated`
    * callback here is optional, and is equivalent to calling
    * `player.once('session-updated', onSessionupdated)`
    */
     updateSession(onSessionUpdated) {
-      
+
       RNFMAudioPlayer.updateSession();
       if (onSessionUpdated) {
         this.once('session-updated', onSessionUpdated);
@@ -313,7 +333,7 @@ class AudioPlayer {
 
   /**
    * Return the client id that the Feed.fm SDK uses to identify the user.
-   * This value will not be defined until the player has announced that 
+   * This value will not be defined until the player has announced that
    * music is available.
    */
   get clientID() {
@@ -344,7 +364,7 @@ class AudioPlayer {
    * callback here is optional, and is equivalent to calling
    * `player.once('session-updated', onSessionupdated)`
    *
-   * @param {*} onSessionUpdated 
+   * @param {*} onSessionUpdated
    */
 
   createNewClientID(onSessionUpdated) {
@@ -358,13 +378,13 @@ class AudioPlayer {
   /**
    *
    * Log an event on feed.fm servers
-   * 
+   *
    * @param {String} event Event name as String
    * @param {JSONObject} params Parameters as JSONObject
    */
 
     logEvent(event, params) {
-      
+
       this.log('Log Event');
       RNFMAudioPlayer.logEvent(event, params);
 
@@ -400,7 +420,7 @@ class AudioPlayer {
    */
   onAvailability(props) {
     let available = this._available = props.available;
-    
+
     if (available) {
       this.log('Music is available');
       this._stations = props.stations;
