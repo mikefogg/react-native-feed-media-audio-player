@@ -1,15 +1,12 @@
 
-# react-native-audio-player
+# react-native-feed-media-audio-player
 
-This is the repository for our React Native bridge that allows
-a React Native app to control our native audio players via
-Javascript.
+This library will expose the iOS and Android Feed.fm SDKs for use in React
+Native projects for music playback. 
 
-This repo contains our bridge plus an example app that we use
-for development. The bridge code that is published to NPM
-exists [in the `package` directory](https://github.com/feedfm/react-native-feed-media-audio-player/tree/master/package).
+## How to use
 
-To use the library, run the following in your React Native app:
+From your React Native v0.60 or above project, run:
 
 ```
 npm install react-native-feed-media-audio-player
@@ -17,221 +14,112 @@ cd ios
 pod install
 ```
 
-Look in the `example` dir in this repo to see an example app
-that uses the player.
-
-For help or bug reporting, please send an email to support@feed.fm.
-
-## Overview 
+done!
 
 
- AudioPlayer is the bridge to a native FMAudioPlayer instance. This class tries
- to keep track of the state of the native player and forward on events to javascript
- listeners.
+## Sample
 
- To use it:
- ```Javascript
- let player = new AudioPlayer(); // player will be uninitialized
- player.initialize(token, secret, (available) => {   if (available) {
-       // play music!
-       player.play()
-    } else {
-       // this user doesn't have anything to listen to
-    }
-  }));
- ```
-  the player emits a number of events that can be subscribed to with the `on()` method:
- 
-  elapsed - time has elapsed during playback
-  session-updated - the client id of the current user has changed (in response
-     to a setClientID or createNewClientID call), and possibly the list of
-     available stations has updated as well
-  play-started - a new song has started playback
-  state-change - the player's state has changed
-  station-change - the current station has changed
-  skip-failed - the last skip request has failed
+Check out [ExampleUI.js](ExampleUI.js) in this package for a minimal native
+React component that plays music using this library and displays play/pause/skip/volume
+controls along with the current song.
+
+## Usage
 
 
+At the start of your app, call initialize to create the
+singleton player instance and have it contact feed.fm and
+wait for a list of available music stations:
 
-Methods available for player are described below along with documentation
+```javascript
+import audioPlayerService from 'react-native-feed-media-audio-player';
 
-```Javascript  
+audioPlayerService.initialize({ token: 'demo', secret: 'demo', debug: true });
+```
 
-  /**
-   * Initialize the native player. This stops any music playback and causes the player
-   * to try to contact Feed.fm to find available music stations.
-   *
-   * *note* - calling this multiple times with different token/secret values requires an app restart.
-   *
-   *
-   * @param {string} token - token value provided by Feed.fm
-   * @param {string} secret - secret value provided by Feed.fm
-   * @param {availabilityCallback} [availability] - callback that is called once when
-   *       availability is determined
-   * @param {boolean} [handleRemoteCommands] - when true, the audio player should
-   *       integrate with lock screen controls (iOS) or notification controls (Android)
-   *       to support background audio playback and control.
-   */
-  initialize(token, secret, availability, handleRemoteCommands)
-  
-  /**
-   * The provide callback will be executed as soon as the player determines that
-   * music is available or not.
-   *
-   * @param {availabilityCallback} availability
-   */
-  whenAvailable(availability) 
+The audioPlayerService exposes the singleton player via `audioPlayerService.player`.
 
-  /**
-   * Register a callback for the given event.
-   *
-   * @param {string} event - the event to subscribe to
-   * @param {functin} callback - this function is called every time the event is triggered
-   * @returns {function} - returns a function to unsubscribe from these events
-   */
-  on(event) 
+The `player` instance has a number of simple playback methods to
+control playback: `play()`, `pause()`, `skip()`, `stop()`. 
 
-  /**
-   * Register a callback for the given event but, after a single call of the callback function,
-   * the event is unsubscribed.
-   *
-   * @param {string} event  - the event to subscribe to
-   * @param {function} callback  -
-   */
-  once(event, callback) 
+The player holds a `playbackState` that indicates what it is doing.
+That state is one of:
 
-  /**
-   * Enable/disable AVAudiosession for iOS only
-   */
+- `UNINITIALIZED`
+  the player is still trying to contact feed.fm
+- `UNAVAILABLE`
+  the player has no connectivity or feed.fm determined the client
+  isn't allowed to play music at this time
+- `WAITING_FOR_ITEM`
+  the player is waiting for the next song to play from feed.fm
+- `READY_TO_PLAY`
+  the player is idle and ready to play music
+- `PLAYING`
+  the player is actively playing a song
+- `PAUSED`
+  the player has paused playback of the current song
+- `STALLED`
+  the player is waiting for more audio data to arrive over the network
 
-  enableiOSAudioSession(enable) 
+The player holds a `stations` property that is a list of stations that
+it can pull music from. If the player is playing a song, details
+of the current song are available via the `currentPlay`.
 
-  /**
-   * Begin playback of music in the current station, or resume playback after pausing.
-   *
-   */
-  play() 
+The player's `activeStation` property can be assigned one of the
+stations from `stations`.
 
-  /**
-   * Pause music playback
-   */
-  pause() 
+The player emits events to announce changes in its state. Clients
+can subscribe to events via `player.on(event, callback)`, which
+returns a function to unsubscribe from the event. The events
+(and the objects passed with them to subscribers) are:
 
-  /**
-   * Ask the player to skip the current song. If the request is granted, the player
-   * will automatically advance to the next song. If the request is denied, then
-   * a 'skip-failed' event will be triggered and the current song will continue playback.
-   */
-  skip() 
+- `play-started` (play)
+  A new song has started playback
+- `state-change` (playbackState)
+  The player's state has changed
+- `station-change` (station)
+  The current station has changed
+- `skip-failed` 
+  The last skip request has failed
 
-  /**
-   * Stop playback of the current song and free up any audio data in memory.
-   */
-  stop() 
-
-  /**
-   * Seek into the current station by the given number of seconds.
-   */
-
-  seekCurrentStationBy(seconds) 
-  
-  /**
-   * Return promise with the number of seconds the player can jump ahead in the current station.
-   */
-  get maxSeekableLengthInSeconds() 
-
-  /**
-   * Return promise with int with value 0 or 1 on whether skipping is allowed in current station at this time. 
-   */
-  get canSkip()
-
-
-  /**
-   * Return the current state of the music player. Possible states are:
-   *
-   * UNINITIALIED - player is contacting feed.fm servers for configuration
-   * UNAVAILABLE - there is no music available to this client (for various reasons)
-   * WAITING_FOR_ITEM - the player is waiting for the feed.fm servers to tell it what to play
-   * READY_TO_PLAY - the player is idle and ready to begin playback
-   * PLAYING - the player is actively playing a song.
-   * PAUSED - the player has an active song but playback is paused
-   * STALLED - the player is trying to play a song, but it's waiting for audio data to
-   *   arrive.
-   *
-   * @returns {string} current player state
-   */
-
-  get playbackState() 
-
-  /**
-   * Return a `play` object that represents the current active song. The
-   * play object looks like this:
-   *
-   * {
-   *   title: 'song title',
-   *   artist: 'performer',
-   *   album: 'album song appears on',
-   *   duration: xx, // duration of song (in seconds)
-   *   metadata: { } // arbitrary metadata attached to song (URL to artwork, BPM info, genre info..)
-   * }
-   */
-  get currentPlay() 
-
-  /**
-   * Update the player to pull music from the given station (which must have
-   * come from the `stations` property)
-   */
-  set activeStation(station) 
-
-  /**
-   * The currently active station that music is drawn from.
-   */
-  get activeStation() 
-  
-  /**
-   * Set the music volume (from 0..1)
-   */
-  set volume(volume) 
-
-  /**
-   * Return number of seconds of elapsed playback of the current play.
-   */
-  get elapsedTime() 
-
-  /**
-   * Return the client id that the Feed.fm SDK uses to identify the user.
-   * This value will not be defined until the player has announced that 
-   * music is available.
-   */
-  get clientID() 
-  
-  /**
-   * Set the client id. This must be a valid client id, or it will be
-   * ignored. This will trigger a re-request of the available stations.
-   * The player will emit a 'session-updated' event after assigning the
-   * new client ID and retrieving the list of stations. The `onSessionUpdated`
-   * callback here is optional, and is equivalent to calling
-   * `player.once('session-updated', onSessionupdated)`
-   */
-  setClientID(id, onSessionUpdated) 
-
-  /**
-   * Ask the SDK to create a new client id and update the list of
-   * available stations. This triggers a 'session-updated' event
-   * The player will emit a 'session-updated' event after assigning the
-   * new client ID and retrieving the list of stations. The `onSessionUpdated`
-   * callback here is optional, and is equivalent to calling
-   * `player.once('session-updated', onSessionupdated)`
-   *
-   * @param {*} onSessionUpdated 
-   */
-
-  createNewClientID(onSessionUpdated) 
-
-  /**
-   * Return the list of available music stations to pull music from. This
-   * will be undefined until the player has announce that it is available.
-   */
-  get stations() 
+The player is of no use until it successfully contacts feed.fm
+and receives a list of stations that the client can play music
+from. We say that the player is determining if music is `available`.
+To simplify checking whether the player has finished contacting
+feed.fm and determined if music is available, the `player.whenAvailable(callback)`
+method can be used. That method calls the provided function as soon
+as the player knows whether music is available or not:
 
 ```
+player.whenAvailable((available) => {
+  if (!available) {
+    // no music is available for this client
+    return;
+
+  } else {
+    // music is available! listen to events..
+    player.on('xxx', () => { });
+
+    // pick a station from player.stations:
+    player.activeStation = player.stations[indexOfSomeStation];
+
+    // start playback!
+    player.play();
+
+  }
+});
+```
+
+When the player is not available, there is no music
+that the user can listen to (due to either lack of Internet connectivity
+or the user is in a location where playback is not licensed). The
+player's playback state will be `UNAVAILABLE`.
+In that situation, you should not render any music playback
+controls, as the player is effectively useless.
+
+Otherwise, when the player is available, it will hold an `activeStation`
+and a list of available `stations`, and will respond to playback
+methods.
+
+```
+
+
